@@ -145,6 +145,76 @@ func TestConfigAPIStoreErrors(t *testing.T) {
 	}
 }
 
+// interleavedConfigReader commits a real store mutation after ResolveAll has
+// captured its entries, reproducing a write between the poll's two database reads.
+type interleavedConfigReader struct {
+	*config.Store
+	afterResolve func()
+}
+
+func (r *interleavedConfigReader) ResolveAll(ctx context.Context, attrs config.NodeAttrs) (map[string]config.Resolved, error) {
+	eff, err := r.Store.ResolveAll(ctx, attrs)
+	if err == nil && r.afterResolve != nil {
+		after := r.afterResolve
+		r.afterResolve = nil
+		after()
+	}
+	return eff, err
+}
+
+func TestConfigPollDoesNotAcknowledgeUnseenMutation(t *testing.T) {
+	for _, deletion := range []bool{false, true} {
+		name := "set"
+		if deletion {
+			name = "delete"
+		}
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			_, st, _ := configPlane(t)
+			if err := st.Set(ctx, config.Entry{Scope: config.ScopeFleet, Key: "worker.queue-depth", Value: "9"}); err != nil {
+				t.Fatal(err)
+			}
+			if deletion {
+				if err := st.Set(ctx, config.Entry{Scope: config.ScopeFleet, Key: "worker.slo-budget", Value: "5s"}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			reader := &interleavedConfigReader{Store: st, afterResolve: func() {
+				var err error
+				if deletion {
+					err = st.Delete(ctx, config.ScopeFleet, "", "worker.slo-budget")
+				} else {
+					err = st.Set(ctx, config.Entry{Scope: config.ScopeFleet, Key: "worker.slo-budget", Value: "5s"})
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+			}}
+			attrs := config.NodeAttrs{UUID: "worker", Roles: []string{"worker"}}
+			firstVersion, first, err := readConfigForPoll(ctx, reader, attrs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, present := first["worker.slo-budget"]; present != deletion {
+				t.Fatal("fixture did not capture the entries before the mutation")
+			}
+			nextVersion, next, err := readConfigForPoll(ctx, reader, attrs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if nextVersion <= firstVersion {
+				t.Fatalf("unseen %s would be skipped as unchanged: first version=%d, next=%d", name, firstVersion, nextVersion)
+			}
+			if _, present := next["worker.slo-budget"]; present == deletion {
+				t.Fatalf("next poll did not include the %s", name)
+			}
+			if next["worker.queue-depth"].Value != "9" || (!deletion && next["worker.slo-budget"].Value != "5s") {
+				t.Fatalf("wrong effective configuration after mutation: %+v", next)
+			}
+		})
+	}
+}
+
 // TestWorkerLiveAppliesConfig is the P1-7 live proof: a running worker's admission knobs change
 // within one config poll of an operator write — fleet scope first, then a node override.
 func TestWorkerLiveAppliesConfig(t *testing.T) {

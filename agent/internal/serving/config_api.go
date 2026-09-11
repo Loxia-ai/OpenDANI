@@ -105,17 +105,34 @@ func (p *Plane) handleConfigResolve(rw http.ResponseWriter, r *http.Request) {
 		UUID: r.URL.Query().Get("uuid"), Site: r.URL.Query().Get("site"),
 		Roles: splitNonEmpty(r.URL.Query().Get("roles")),
 	}
-	eff, err := p.configAPI.store.ResolveAll(r.Context(), attrs)
-	if err != nil {
-		writeErr(rw, http.StatusInternalServerError, err)
-		return
-	}
-	v, err := p.configAPI.store.Version(r.Context())
+	v, eff, err := readConfigForPoll(r.Context(), p.configAPI.store, attrs)
 	if err != nil {
 		writeErr(rw, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(rw, http.StatusOK, map[string]any{"version": v, "effective": eff})
+}
+
+type configPollReader interface {
+	Version(context.Context) (int64, error)
+	ResolveAll(context.Context, config.NodeAttrs) (map[string]config.Resolved, error)
+}
+
+// readConfigForPoll reads the version first so it never acknowledges a mutation
+// newer than the returned entries. Set/Delete commit entries and version together.
+// A write between these reads can make the watermark older than the entries (one
+// harmless extra apply on the next poll), but cannot hide that write indefinitely
+// behind the worker's unchanged-version fast path.
+func readConfigForPoll(ctx context.Context, store configPollReader, attrs config.NodeAttrs) (int64, map[string]config.Resolved, error) {
+	v, err := store.Version(ctx)
+	if err != nil {
+		return 0, nil, err
+	}
+	eff, err := store.ResolveAll(ctx, attrs)
+	if err != nil {
+		return 0, nil, err
+	}
+	return v, eff, nil
 }
 
 // handleLinkConfig serves a node's effective config over the mTLS Link (nodes poll it).
