@@ -1,0 +1,250 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   DANI design system — applied to the console.
+   The palette utilities the app already uses (slate / emerald / sky / amber /
+   rose) are REMAPPED here to the DANI ramp + one signal green, so every view
+   inherits the language without touching each component. Three faces:
+   Chakra Petch (display), Inter Tight (body), JetBrains Mono (machine output).
+   ========================================================================= */
+@theme {
+  --font-sans: "Inter Tight", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+  --font-display: "Chakra Petch", "Bahnschrift", sans-serif;
+
+  /* Surfaces + text ramp — slate becomes the DANI void→edge ramp */
+  --color-slate-950: #000000;
+  --color-slate-900: #0e1113;
+  --color-slate-800: #171b1e;
+  --color-slate-700: #232a2c;
+  --color-slate-600: #34403d;
+  --color-slate-500: #66716a;
+  --color-slate-400: #a3ada2;
+  --color-slate-300: #c4ccc2;
+  --color-slate-200: #e8ede6;
+  --color-slate-100: #f2f6f0;
+
+  /* Live / ok — emerald becomes the one true green */
+  --color-emerald-300: #a3f000;
+  --color-emerald-400: #8fd400;
+  --color-emerald-500: #76b900;
+  --color-emerald-600: #5f9700;
+
+  /* Transfer / info — sky becomes DANI cyan */
+  --color-sky-300: #7de4f2;
+  --color-sky-400: #22d3ee;
+  --color-sky-500: #22d3ee;
+
+  /* Warn / bad kept in family, tuned to the system */
+  --color-amber-300: #ffc85c;
+  --color-amber-500: #ffb020;
+  --color-rose-300: #ff8a96;
+  --color-rose-500: #ff4d5e;
+  --color-rose-600: #e23445;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  margin: 0;
+  background: #000000;
+  color: #e8ede6;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ambient: a single green bloom from the floor + a fine mesh grid substrate */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(120% 55% at 50% 108%, rgba(118, 185, 0, 0.12), transparent 60%),
+    radial-gradient(70% 40% at 92% -6%, rgba(34, 211, 238, 0.045), transparent 58%);
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  background-image:
+    linear-gradient(rgba(118, 185, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(118, 185, 0, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  -webkit-mask-image: radial-gradient(95% 70% at 50% 28%, #000 22%, transparent 82%);
+  mask-image: radial-gradient(95% 70% at 50% 28%, #000 22%, transparent 82%);
+}
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* the interface NAMES things in Chakra Petch: headings + eyebrow labels */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+.uppercase {
+  font-family: var(--font-display);
+  letter-spacing: 0.12em;
+}
+
+::selection {
+  background: #76b900;
+  color: #0a1200;
+}
+
+/* thin green-tinted scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #34403d transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #232a2c;
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #34403d;
+}
+
+/* green focus ring */
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid #a3f000;
+  outline-offset: 1px;
+  border-radius: 6px;
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+/* topology constellation: handles are invisible anchors (floating edges use node centers) */
+.dn-hidden-handle {
+  opacity: 0;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  pointer-events: none;
+}
+/* the leader star breathes */
+.dn-star-pulse {
+  animation: dn-star 3.6s ease-in-out infinite;
+}
+@keyframes dn-star {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+/* nodes ease as they focus/dim/rearrange */
+.dn-node {
+  transition: opacity 320ms ease, filter 320ms ease, transform 220ms ease, box-shadow 320ms ease;
+}
+/* dimmed = pushed back when another node (or a search) has the focus */
+.dn-dim {
+  opacity: 0.28;
+  filter: saturate(0.5);
+}
+/* the focused node lifts forward with an emerald halo */
+.dn-focus-ring {
+  transform: scale(1.06);
+  box-shadow:
+    0 0 0 1.5px rgba(163, 240, 0, 0.75),
+    0 0 34px -4px rgba(163, 240, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  z-index: 5;
+}
+/* a serving worker gets a soft, slow pulse */
+.dn-serving {
+  animation: dn-serving 2.8s ease-in-out infinite;
+}
+@keyframes dn-serving {
+  0%,
+  100% {
+    box-shadow: 0 0 22px -9px rgba(118, 185, 0, 0.65);
+  }
+  50% {
+    box-shadow: 0 0 30px -6px rgba(143, 212, 0, 0.85);
+  }
+}
+/* the little health dot on a live node winks */
+.dn-live-dot {
+  animation: dn-live-dot 1.9s ease-in-out infinite;
+}
+@keyframes dn-live-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(52, 211, 153, 0);
+  }
+}
+/* traffic particle that streams down each live link */
+.dn-flow-dot {
+  filter: drop-shadow(0 0 3px currentColor);
+}
+/* detail panel slides in from the right */
+.dn-panel-in {
+  animation: dn-panel-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes dn-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+/* a slow aurora drifting behind the constellation — depth without distraction */
+.dn-aurora {
+  background:
+    radial-gradient(40% 55% at 22% 30%, rgba(34, 211, 238, 0.09), transparent 70%),
+    radial-gradient(45% 60% at 80% 70%, rgba(118, 185, 0, 0.08), transparent 70%),
+    radial-gradient(35% 45% at 60% 20%, rgba(99, 102, 241, 0.06), transparent 70%);
+  animation: dn-aurora 22s ease-in-out infinite alternate;
+}
+@keyframes dn-aurora {
+  0% {
+    transform: translate3d(-2%, -1%, 0) scale(1.02);
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate3d(2%, 2%, 0) scale(1.08);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dn-star-pulse,
+  .dn-serving,
+  .dn-live-dot,
+  .dn-aurora,
+  .dn-flow-dot animateMotion {
+    animation: none;
+  }
+}

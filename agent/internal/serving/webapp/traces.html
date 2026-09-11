@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DANI · live traces</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --dn-void: #000000;
+        --dn-graphite: #0e1113;
+        --dn-slate: #171b1e;
+        --dn-edge: #232a2c;
+        --dn-edge-hi: #34403d;
+        --dn-fg: #e8ede6;
+        --dn-fg-dim: #a3ada2;
+        --dn-fg-mute: #66716a;
+        --dn-green: #76b900;
+        --dn-green-lit: #a3f000;
+        --dn-cyan: #22d3ee;
+        --dn-amber: #ffb020;
+        --dn-red: #ff4d5e;
+        --dn-display: "Chakra Petch", "Bahnschrift", sans-serif;
+        --dn-body: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+        --dn-mono: "JetBrains Mono", ui-monospace, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--dn-void);
+        color: var(--dn-fg);
+        font-family: var(--dn-body);
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background:
+          radial-gradient(120% 55% at 50% 108%, rgba(118, 185, 0, 0.12), transparent 60%),
+          radial-gradient(70% 40% at 92% -6%, rgba(34, 211, 238, 0.045), transparent 58%);
+      }
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        opacity: 0.5;
+        background-image:
+          linear-gradient(rgba(118, 185, 0, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(118, 185, 0, 0.04) 1px, transparent 1px);
+        background-size: 60px 60px;
+        -webkit-mask-image: radial-gradient(95% 70% at 50% 22%, #000 20%, transparent 82%);
+        mask-image: radial-gradient(95% 70% at 50% 22%, #000 20%, transparent 82%);
+      }
+      .wrap {
+        position: relative;
+        z-index: 1;
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 20px 60px;
+      }
+      header.top {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .mark {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--dn-green);
+        box-shadow: 0 0 12px 2px rgba(118, 185, 0, 0.7);
+        animation: pulse 2.4s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        50% {
+          opacity: 0.45;
+        }
+      }
+      .mark b {
+        font-family: var(--dn-display);
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: 0.02em;
+      }
+      .mark span {
+        color: var(--dn-fg-mute);
+        font-size: 13px;
+      }
+      .spacer {
+        flex: 1;
+      }
+      .stat {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        line-height: 1;
+      }
+      .stat .n {
+        font-family: var(--dn-display);
+        font-weight: 700;
+        font-size: 22px;
+        background: linear-gradient(180deg, var(--dn-green-lit), var(--dn-green));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .stat .l {
+        margin-top: 5px;
+        font-family: var(--dn-display);
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--dn-fg-mute);
+      }
+      .sub {
+        margin: 6px 0 20px;
+        color: var(--dn-fg-dim);
+        font-size: 14px;
+        max-width: 70ch;
+      }
+      .panel {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 14px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015));
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          0 12px 30px -16px rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(6px);
+        overflow: hidden;
+      }
+      .panel-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .panel-head h2 {
+        margin: 0;
+        font-family: var(--dn-display);
+        font-size: 13px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--dn-fg);
+      }
+      .spark {
+        margin-left: auto;
+        display: block;
+      }
+      .scroll {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        min-width: 860px;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      thead th {
+        text-align: left;
+        padding: 9px 14px;
+        font-family: var(--dn-display);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--dn-fg-mute);
+        font-weight: 600;
+      }
+      thead th.r,
+      td.r {
+        text-align: right;
+      }
+      tbody td {
+        padding: 9px 14px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        vertical-align: middle;
+      }
+      tbody tr:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      tbody tr {
+        animation: rowin 0.4s ease;
+      }
+      @keyframes rowin {
+        from {
+          background: rgba(118, 185, 0, 0.08);
+        }
+      }
+      .mono {
+        font-family: var(--dn-mono);
+        font-size: 12px;
+      }
+      .id {
+        color: var(--dn-fg-mute);
+      }
+      .node {
+        color: var(--dn-fg);
+      }
+      .site {
+        color: var(--dn-fg-mute);
+        font-size: 11px;
+      }
+      .dur {
+        font-family: var(--dn-mono);
+        font-variant-numeric: tabular-nums;
+      }
+      .pred {
+        color: var(--dn-fg-mute);
+        font-size: 11px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        font-family: var(--dn-mono);
+        border: 1px solid transparent;
+        white-space: nowrap;
+      }
+      .b-served {
+        background: rgba(118, 185, 0, 0.14);
+        color: var(--dn-green-lit);
+        border-color: rgba(118, 185, 0, 0.32);
+      }
+      .b-busy {
+        background: rgba(255, 176, 32, 0.14);
+        color: var(--dn-amber);
+        border-color: rgba(255, 176, 32, 0.32);
+      }
+      .b-error,
+      .b-no_route {
+        background: rgba(255, 77, 94, 0.14);
+        color: var(--dn-red);
+        border-color: rgba(255, 77, 94, 0.3);
+      }
+      .b-muted {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--dn-fg-dim);
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+      .cls {
+        font-family: var(--dn-mono);
+        font-size: 11px;
+        color: var(--dn-fg-dim);
+      }
+      .empty {
+        padding: 46px 16px;
+        text-align: center;
+        color: var(--dn-fg-mute);
+        font-size: 14px;
+      }
+      .empty .big {
+        font-size: 28px;
+        opacity: 0.35;
+        margin-bottom: 8px;
+      }
+      .tick {
+        color: var(--dn-fg-mute);
+        font-size: 11px;
+        font-family: var(--dn-mono);
+      }
+      a {
+        color: var(--dn-cyan);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <div class="mark">
+          <span class="dot"></span>
+          <b>DANI</b>
+          <span>live traces</span>
+        </div>
+        <div class="spacer"></div>
+        <div class="stat"><span class="n" id="n-served">—</span><span class="l">served</span></div>
+        <div class="stat"><span class="n" id="n-total">—</span><span class="l">requests</span></div>
+        <div class="stat"><span class="n" id="n-p50">—</span><span class="l">median ms</span></div>
+      </header>
+      <p class="sub">
+        Every request's journey through the mesh — where it landed, which site answered, how long it
+        took versus the router's prediction. Newest first, refreshing live. <a href="/console/">open console →</a>
+      </p>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Recent requests</h2>
+          <svg class="spark" id="spark" width="140" height="26" viewBox="0 0 140 26"></svg>
+        </div>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Trace</th>
+                <th>Model</th>
+                <th>Class</th>
+                <th>Status</th>
+                <th>Served by</th>
+                <th class="r">Duration</th>
+                <th class="r">Age</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="empty" style="display: none">
+          <div class="big">◇</div>
+          No traffic yet. Send a request through <span class="mono">/v1/chat/completions</span> and it
+          will appear here.
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      const short = (s) => (s && s.length > 14 ? s.slice(0, 6) + "…" + s.slice(-5) : s || "—");
+      const ageOf = (ms) => {
+        const d = Date.now() - ms;
+        if (d < 1000) return "now";
+        if (d < 60000) return Math.round(d / 1000) + "s";
+        if (d < 3600000) return Math.round(d / 60000) + "m";
+        return Math.round(d / 3600000) + "h";
+      };
+      const badge = (st) => {
+        const cls = { served: "b-served", busy: "b-busy", error: "b-error", no_route: "b-no_route" }[st] || "b-muted";
+        return `<span class="badge ${cls}">${esc(st || "—")}</span>`;
+      };
+
+      function sparkline(vals) {
+        const el = document.getElementById("spark");
+        if (!vals.length) {
+          el.innerHTML = "";
+          return;
+        }
+        const W = 140, H = 26, pad = 2;
+        const max = Math.max(...vals, 1);
+        const step = vals.length > 1 ? (W - pad * 2) / (vals.length - 1) : 0;
+        const pts = vals.map((v, i) => [pad + i * step, H - pad - (v / max) * (H - pad * 2)]);
+        const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+        const area = d + ` L${(pad + (vals.length - 1) * step).toFixed(1)} ${H - pad} L${pad} ${H - pad} Z`;
+        el.innerHTML =
+          `<defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#76b900" stop-opacity="0.35"/><stop offset="1" stop-color="#76b900" stop-opacity="0"/></linearGradient></defs>` +
+          `<path d="${area}" fill="url(#sg)"/>` +
+          `<path d="${d}" fill="none" stroke="#a3f000" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+      }
+
+      async function tick() {
+        let data;
+        try {
+          const r = await fetch("/dani/traces?limit=100", { cache: "no-store" });
+          data = await r.json();
+        } catch (e) {
+          return;
+        }
+        const traces = data.traces || [];
+        const rows = document.getElementById("rows");
+        const empty = document.getElementById("empty");
+        empty.style.display = traces.length ? "none" : "block";
+
+        const served = traces.filter((t) => t.status === "served");
+        document.getElementById("n-served").textContent = served.length;
+        document.getElementById("n-total").textContent = traces.length;
+        const durs = served.map((t) => t.durationMs).filter((d) => d > 0).sort((a, b) => a - b);
+        document.getElementById("n-p50").textContent = durs.length ? durs[Math.floor(durs.length / 2)] : "—";
+        // sparkline over the last ~40 served durations, oldest→newest
+        sparkline(served.slice(0, 40).map((t) => t.durationMs || 0).reverse());
+
+        rows.innerHTML = traces
+          .map((t) => {
+            const node = t.servedBy ? `<span class="node mono">${esc(short(t.servedBy))}</span>` : `<span class="tick">unrouted</span>`;
+            const site = t.site ? `<div class="site">${esc(t.site)}</div>` : "";
+            const pred = t.predictedMs ? `<div class="pred">~${t.predictedMs}ms predicted</div>` : "";
+            const dur = t.durationMs ? `${t.durationMs}<span class="tick">ms</span>` : "—";
+            const retries = t.attempts && t.attempts.length > 1 ? `<span class="tick"> ·${t.attempts.length - 1} retry</span>` : "";
+            return (
+              `<tr>` +
+              `<td><span class="id mono" title="${esc(t.id)}">${esc(short(t.id))}</span></td>` +
+              `<td class="mono">${esc(t.model || "—")}</td>` +
+              `<td><span class="cls">${esc(t.classification || "—")}</span></td>` +
+              `<td>${badge(t.status)}${retries}</td>` +
+              `<td>${node}${site}</td>` +
+              `<td class="r"><span class="dur">${dur}</span>${pred}</td>` +
+              `<td class="r tick">${t.startMs ? ageOf(t.startMs) : "—"}</td>` +
+              `</tr>`
+            );
+          })
+          .join("");
+      }
+
+      tick();
+      setInterval(tick, 2000);
+    </script>
+  </body>
+</html>

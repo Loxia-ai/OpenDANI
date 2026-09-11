@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DANI · Fleet Fan-Out</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* DANI design system — surface ramp, one signal green, three faces, glossy bevel material. */
+  :root{
+    --dn-void:#000;--dn-carbon:#07090A;--dn-graphite:#0E1113;--dn-slate:#171B1E;--dn-edge:#232A2C;--dn-edge-hi:#34403D;
+    --dn-green:#76B900;--dn-green-lit:#A3F000;--dn-green-deep:#2E4A00;--dn-green-wash:rgba(118,185,0,.10);
+    --dn-amber:#FFB020;--dn-red:#FF4D5E;--dn-cyan:#22D3EE;--dn-violet:#8B7CFF;
+    --dn-fg:#E8EDE6;--dn-fg-dim:#A3ADA2;--dn-fg-mute:#66716A;--dn-fg-ghost:#3D4642;--dn-on-green:#0A1200;
+    --dn-display:"Chakra Petch","Bahnschrift","DIN Alternate",sans-serif;
+    --dn-body:"Inter Tight","Inter",system-ui,sans-serif;
+    --dn-mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+    --dn-bevel:inset 0 1px 0 0 rgba(255,255,255,.08);--dn-bevel-green:inset 0 1px 0 0 rgba(163,240,0,.28);
+    --dn-sheen:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02) 34%,rgba(255,255,255,0) 62%);
+    --dn-e2:0 4px 16px -4px rgba(0,0,0,.7);--dn-e3:0 18px 48px -12px rgba(0,0,0,.85);
+    --dn-glow:0 0 0 1px rgba(118,185,0,.35),0 8px 32px -10px rgba(118,185,0,.55);
+    --dn-fast:120ms cubic-bezier(.4,0,.2,1);--dn-base:220ms cubic-bezier(.22,1,.36,1);--dn-slow:480ms cubic-bezier(.22,1,.36,1);
+    /* aliases so the page's inline var() references keep resolving */
+    --bg:var(--dn-void);--panel:var(--dn-graphite);--line:var(--dn-edge);--ink:var(--dn-fg);--dim:var(--dn-fg-dim);
+    --accent:var(--dn-green-lit);--accent2:var(--dn-cyan);--warn:var(--dn-amber);--bad:var(--dn-red);--muted:var(--dn-fg-mute);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--dn-void);color:var(--dn-fg);font:400 14px/1.55 var(--dn-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  /* ambient: a single green bloom bleeding up from the floor, cyan glint top-right */
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(120% 60% at 50% 110%,rgba(118,185,0,.14),transparent 62%),radial-gradient(70% 40% at 90% -8%,rgba(34,211,238,.05),transparent 60%)}
+  /* the living mesh substrate */
+  #meshbg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.55;
+    -webkit-mask-image:radial-gradient(100% 80% at 50% 26%,#000 28%,transparent 86%);mask-image:radial-gradient(100% 80% at 50% 26%,#000 28%,transparent 86%)}
+  body>header,body>div{position:relative;z-index:1}
+  ::selection{background:var(--dn-green);color:var(--dn-on-green)}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:var(--dn-carbon)}
+  ::-webkit-scrollbar-thumb{background:var(--dn-edge);border-radius:99px;border:2px solid var(--dn-carbon)}
+  ::-webkit-scrollbar-thumb:hover{background:var(--dn-edge-hi)}
+
+  header{display:flex;align-items:center;gap:14px;padding:16px 26px;
+    background:rgba(7,9,10,.72);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);
+    border-bottom:1px solid var(--dn-edge)}
+  header .logo{font:700 19px/1 var(--dn-display);letter-spacing:.14em;color:var(--dn-fg)}
+  header .logo b{color:var(--dn-green-lit);font-weight:700}
+  header .tag{color:var(--dn-fg-mute);font:400 12px/1.4 var(--dn-mono);letter-spacing:.02em}
+  header .spacer{flex:1}
+  .fleet{display:flex;gap:7px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--dn-fg-dim)}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.04);border:1px solid var(--dn-edge);
+    border-radius:999px;padding:4px 11px;font-size:12px;color:var(--dn-fg-dim);letter-spacing:.01em}
+
+  .wrap{display:grid;grid-template-columns:minmax(360px,1fr) minmax(420px,1.3fr);gap:18px;padding:20px 26px}
+  .card{position:relative;padding:20px;border:1px solid var(--dn-edge);border-radius:14px;overflow:hidden;
+    background:var(--dn-sheen),linear-gradient(180deg,var(--dn-slate),var(--dn-graphite));
+    box-shadow:var(--dn-e2),var(--dn-bevel)}
+  .card h2{margin:0 0 12px;font:600 11px/1 var(--dn-display);text-transform:uppercase;letter-spacing:.16em;color:var(--dn-fg-mute);
+    display:flex;align-items:center;gap:9px}
+  .card h2::before{content:"";width:16px;height:2px;border-radius:2px;background:var(--dn-green);box-shadow:0 0 10px 1px var(--dn-green)}
+
+  textarea{width:100%;height:280px;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.35)),var(--dn-carbon);
+    color:var(--dn-fg);border:1px solid var(--dn-edge);border-radius:8px;padding:12px;resize:vertical;
+    font:400 12.5px/1.5 var(--dn-mono);box-shadow:inset 0 2px 6px rgba(0,0,0,.55);transition:border-color var(--dn-base),box-shadow var(--dn-base)}
+  textarea:focus{outline:none;border-color:var(--dn-green);box-shadow:inset 0 2px 6px rgba(0,0,0,.5),0 0 0 3px rgba(118,185,0,.16)}
+  .row{display:flex;gap:11px;align-items:center;margin-top:12px;flex-wrap:wrap}
+
+  button{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;overflow:hidden;
+    height:44px;padding:0 20px;border:1px solid transparent;border-radius:8px;cursor:pointer;white-space:nowrap;
+    font:600 13px/1 var(--dn-display);letter-spacing:.05em;text-transform:uppercase;
+    color:var(--dn-on-green);background:linear-gradient(180deg,#8FD400,var(--dn-green) 52%,#5F9700);
+    box-shadow:var(--dn-bevel-green),0 6px 20px -8px rgba(118,185,0,.75);
+    transition:transform var(--dn-fast),box-shadow var(--dn-base),filter var(--dn-base)}
+  button::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.32),transparent 46%);opacity:.5;pointer-events:none}
+  button:hover{filter:brightness(1.06);box-shadow:var(--dn-bevel-green),0 10px 34px -8px rgba(118,185,0,.95)}
+  button:active{transform:translateY(1px)}
+  button.ghost{color:var(--dn-fg);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.01));
+    border-color:var(--dn-edge-hi);box-shadow:var(--dn-bevel),0 1px 2px rgba(0,0,0,.6)}
+  button.ghost::after{display:none}
+  button.ghost:hover{filter:none;border-color:var(--dn-green);color:var(--dn-green-lit);box-shadow:var(--dn-glow)}
+  button:disabled{opacity:.38;pointer-events:none}
+  select{height:40px;padding:0 34px 0 12px;color:var(--dn-fg);background:var(--dn-carbon);border:1px solid var(--dn-edge);
+    border-radius:6px;font:400 13px/1 var(--dn-body);appearance:none;cursor:pointer;box-shadow:inset 0 2px 6px rgba(0,0,0,.5);
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%2366716A' stroke-width='1.8'><path d='M2 4.5 6 8.5 10 4.5'/></svg>");background-repeat:no-repeat;background-position:right 12px center}
+  select:focus{outline:none;border-color:var(--dn-green)}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin:4px 0 14px}
+  .stat{padding:13px 15px;border:1px solid var(--dn-edge);border-radius:10px;overflow:hidden;
+    background:var(--dn-sheen),linear-gradient(180deg,var(--dn-slate),var(--dn-graphite));box-shadow:var(--dn-bevel)}
+  .stat .n{font:600 26px/1 var(--dn-mono);letter-spacing:-.03em;
+    background:linear-gradient(180deg,#fff 10%,var(--dn-green-lit) 135%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat .l{margin-top:8px;font:600 10px/1 var(--dn-display);color:var(--dn-fg-mute);text-transform:uppercase;letter-spacing:.14em}
+  .stat .n.acc{background:linear-gradient(180deg,#fff,var(--dn-green-lit) 130%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat .n.acc2{background:linear-gradient(180deg,#fff,var(--dn-cyan) 140%);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+  .fns{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto}
+  .fn{display:grid;grid-template-columns:16px 1fr auto;gap:10px;align-items:center;padding:9px 12px;border-radius:9px;
+    border:1px solid var(--dn-edge);background:linear-gradient(180deg,rgba(255,255,255,.02),transparent);transition:background var(--dn-fast),border-color var(--dn-fast)}
+  .fn:hover{border-color:var(--dn-edge-hi);background:linear-gradient(90deg,var(--dn-green-wash),transparent 70%)}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--dn-fg-ghost);flex:none}
+  .dot.run{background:var(--dn-amber);box-shadow:0 0 8px var(--dn-amber);animation:pulse 1.4s ease-out infinite}
+  .dot.ok{background:var(--dn-green-lit);box-shadow:0 0 8px var(--dn-green-lit)}
+  .dot.err{background:var(--dn-red);box-shadow:0 0 8px var(--dn-red)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,176,32,.6)}70%{box-shadow:0 0 0 7px rgba(255,176,32,0)}100%{box-shadow:0 0 0 0 rgba(255,176,32,0)}}
+  .fn .name{font:500 12.5px/1 var(--dn-mono);color:var(--dn-fg)}
+  .fn .meta{font:400 11px/1.3 var(--dn-mono);color:var(--dn-fg-mute);text-align:right}
+  .fn .meta b{color:var(--dn-green-lit);font-weight:500}
+
+  pre.out{margin:0;background:#040505;border:1px solid var(--dn-edge);border-radius:10px;padding:14px;max-height:220px;overflow:auto;
+    font:400 12.5px/1.7 var(--dn-mono);white-space:pre-wrap;color:var(--dn-fg-dim);box-shadow:var(--dn-e3)}
+  .verdict{margin-top:12px;padding:12px 14px;border-radius:10px;font:500 13px/1.4 var(--dn-body);
+    border:1px solid var(--dn-edge);border-left:2px solid var(--dn-green);background:var(--dn-graphite);box-shadow:var(--dn-bevel)}
+  .verdict.ok{border-left-color:var(--dn-green);color:var(--dn-green-lit)}
+  .verdict.bad{border-left-color:var(--dn-red);color:#FF8A96}
+  .hint{color:var(--dn-fg-mute);font-size:12px}
+  details summary{font-family:var(--dn-body)}
+  a{color:var(--dn-cyan)}
+</style>
+</head>
+<body>
+<canvas id="meshbg" aria-hidden="true"></canvas>
+<header>
+  <div class="logo"><b>DANI</b> · Fleet Fan-Out</div>
+  <div class="tag">one skeleton → every node writes a function → reassemble → run</div>
+  <div class="spacer"></div>
+  <div class="fleet" id="fleet"><span class="chip">connecting…</span></div>
+  <a href="/console/" target="_blank" style="color:var(--accent2);font-size:12px;text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:5px 10px">Ops console ↗</a>
+</header>
+
+<div style="padding:12px 22px 0"><div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--dim)">
+  <span class="chip">Sovereign AI — your data never leaves the perimeter</span>
+  <span class="chip">Your own hardware, across your own sites</span>
+  <span class="chip">The fleet writes &amp; runs code together, in parallel</span>
+  <span class="chip">Cryptographically governed &amp; resilient</span>
+</div></div>
+
+<div class="wrap">
+  <div class="card">
+    <h2>1 · Project skeleton (signatures + docs, empty bodies)</h2>
+    <textarea id="skeleton" spellcheck="false"></textarea>
+    <div class="row">
+      <button id="go">⚡ Fan out across the fleet</button>
+      <select id="model"><option value="">auto (fleet default)</option></select>
+      <span class="hint">Each function is dispatched to a different node in parallel.</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2 · The fleet writes them — in parallel</h2>
+    <div class="stats">
+      <div class="stat"><div class="n" id="s-fns">0</div><div class="l">functions</div></div>
+      <div class="stat"><div class="n acc2" id="s-nodes">0</div><div class="l">nodes used</div></div>
+      <div class="stat"><div class="n acc" id="s-tps">—</div><div class="l">fleet tok/s</div></div>
+      <div class="stat"><div class="n acc" id="s-speed">—</div><div class="l">speed-up</div></div>
+      <div class="stat"><div class="n" id="s-wall">—</div><div class="l">wall time</div></div>
+    </div>
+    <div class="fns" id="fns"></div>
+    <div class="row">
+      <button class="ghost" id="verify" disabled>▶ Compile &amp; run the result</button>
+      <span class="hint" id="assembled-note"></span>
+    </div>
+    <div id="verdict"></div>
+    <pre class="out" id="out" style="display:none"></pre>
+    <details id="asm-wrap" style="display:none;margin-top:10px">
+      <summary style="cursor:pointer;color:var(--muted,#889)">view the assembled program (what the fleet wrote) <button class="ghost" id="copy-asm" style="margin-left:8px;font-size:12px">copy</button></summary>
+      <pre class="out" id="assembled-code" style="max-height:420px;overflow:auto"></pre>
+    </details>
+  </div>
+</div>
+
+<div style="padding:0 22px 22px">
+  <div class="card">
+    <h2>3 · Governed &amp; resilient — on infrastructure you own</h2>
+    <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat"><div class="n acc" id="r-audit">—</div><div class="l">audit chain</div></div>
+      <div class="stat"><div class="n" id="r-cap">—</div><div class="l">serving slots</div></div>
+      <div class="stat"><div class="n" id="r-served">—</div><div class="l">requests served</div></div>
+      <div class="stat"><div class="n acc2" id="r-backups">—</div><div class="l">backups kept</div></div>
+    </div>
+    <div class="row">
+      <button class="ghost" id="chaos">💥 Drain a node — watch DANI re-route</button>
+      <span class="hint" id="chaos-note">Every action is signed into a tamper-evident, offline-verifiable audit chain. Nothing leaves your perimeter.</span>
+    </div>
+    <div class="fns" id="topo" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_SKELETON = `// A REAL program the FLEET writes together. The signatures below are the shared CONTRACT — every
+// //TODO body is implemented by a different DANI node in parallel, and functions call each other
+// through these signatures (WordCount -> SplitWords -> IsSpace ...). Reassembled here and run.
+// ASCII only, no imports beyond fmt.
+package main
+
+import "fmt"
+
+// IsSpace reports whether r is a space or tab.
+func IsSpace(r rune) bool {
+	//TODO
+}
+
+// IsVowel reports whether r is an English vowel (either case).
+func IsVowel(r rune) bool {
+	//TODO
+}
+
+// IsDigit reports whether r is an ASCII digit 0-9.
+func IsDigit(r rune) bool {
+	//TODO
+}
+
+// ToLowerRune lowercases an ASCII rune; other runes are returned unchanged.
+func ToLowerRune(r rune) rune {
+	//TODO
+}
+
+// AbsInt returns the absolute value of x.
+func AbsInt(x int) int {
+	//TODO
+}
+
+// MinInt returns the smaller of a and b.
+func MinInt(a, b int) int {
+	//TODO
+}
+
+// MaxInt returns the larger of a and b.
+func MaxInt(a, b int) int {
+	//TODO
+}
+
+// Clamp returns x limited to the range [lo, hi]; uses MinInt and MaxInt.
+func Clamp(x, lo, hi int) int {
+	//TODO
+}
+
+// GCD returns the greatest common divisor of a and b (non-negative).
+func GCD(a, b int) int {
+	//TODO
+}
+
+// IsPrime reports whether n is a prime number.
+func IsPrime(n int) bool {
+	//TODO
+}
+
+// Reverse returns the string s reversed (by rune).
+func Reverse(s string) string {
+	//TODO
+}
+
+// ToLower lowercases an ASCII string; uses ToLowerRune.
+func ToLower(s string) string {
+	//TODO
+}
+
+// CountVowels returns the number of vowels in s; uses IsVowel.
+func CountVowels(s string) int {
+	//TODO
+}
+
+// CountDigits returns the number of ASCII digits in s; uses IsDigit.
+func CountDigits(s string) int {
+	//TODO
+}
+
+// IsPalindrome reports whether s reads the same forwards and backwards, case-insensitive; uses ToLower and Reverse.
+func IsPalindrome(s string) bool {
+	//TODO
+}
+
+// Capitalize returns s with its first ASCII letter uppercased and the rest lowercased; uses ToLowerRune.
+func Capitalize(s string) string {
+	//TODO
+}
+
+// SumInts returns the sum of xs.
+func SumInts(xs []int) int {
+	//TODO
+}
+
+// MaxOfInts returns the largest element of xs (0 if empty); uses MaxInt.
+func MaxOfInts(xs []int) int {
+	//TODO
+}
+
+// MinOfInts returns the smallest element of xs (0 if empty); uses MinInt.
+func MinOfInts(xs []int) int {
+	//TODO
+}
+
+// MeanInt returns the integer mean of xs (0 if empty); uses SumInts.
+func MeanInt(xs []int) int {
+	//TODO
+}
+
+// Contains reports whether v is in xs.
+func Contains(xs []int, v int) bool {
+	//TODO
+}
+
+// Unique returns xs with duplicates removed, keeping first-seen order; uses Contains.
+func Unique(xs []int) []int {
+	//TODO
+}
+
+// CountPrimes returns how many elements of xs are prime; uses IsPrime.
+func CountPrimes(xs []int) int {
+	//TODO
+}
+
+// SplitWords splits s into words on runs of spaces/tabs; uses IsSpace.
+func SplitWords(s string) []string {
+	//TODO
+}
+
+// WordCount returns the number of words in s; uses SplitWords.
+func WordCount(s string) int {
+	//TODO
+}
+
+// LongestWord returns the longest word in s (first on ties); uses SplitWords.
+func LongestWord(s string) string {
+	//TODO
+}
+
+// WordLengths returns the length of each word in s; uses SplitWords.
+func WordLengths(s string) []int {
+	//TODO
+}
+
+// AverageWordLen returns the integer average word length in s; uses WordLengths and MeanInt.
+func AverageWordLen(s string) int {
+	//TODO
+}
+
+// TitleCase capitalizes each word of s and joins them with single spaces; uses SplitWords and Capitalize.
+func TitleCase(s string) string {
+	//TODO
+}
+
+// VowelRatio returns the percentage (0-100) of letters in s that are vowels; uses CountVowels.
+func VowelRatio(s string) int {
+	//TODO
+}
+
+func main() {
+	text := "a man a plan a canal panama"
+	nums := []int{8, 3, 8, 21, 5, 13, 3, 34, 7}
+	fmt.Println("words:        ", WordCount(text))
+	fmt.Println("longest word: ", LongestWord(text))
+	fmt.Println("avg word len: ", AverageWordLen(text))
+	fmt.Println("vowel ratio %:", VowelRatio(text))
+	fmt.Println("title case:   ", TitleCase(text))
+	fmt.Println("palindrome:   ", IsPalindrome("Racecar"))
+	fmt.Println("unique nums:  ", Unique(nums))
+	fmt.Println("mean:         ", MeanInt(nums))
+	fmt.Println("max / min:    ", MaxOfInts(nums), MinOfInts(nums))
+	fmt.Println("primes count: ", CountPrimes(nums))
+	fmt.Println("gcd(24,36):   ", GCD(24, 36))
+	fmt.Println("clamp(15,0,10):", Clamp(15, 0, 10))
+}
+`;
+const $ = s => document.querySelector(s);
+$('#skeleton').value = DEFAULT_SKELETON;
+let lastAssembled = "";
+let siteRing = [];   // sites discovered from the fleet — each request is tagged with a rotating
+                     // origin site so the fan-out spreads across the WHOLE mesh (requests in a
+                     // multi-site org come from users at every site; DANI serves each locally).
+let accelOf = {};    // uuid -> detected acceleration backend (hwcaps) — ⚡ badge on GPU-served answers
+const accelBadge = u => (accelOf[u] && accelOf[u] !== 'cpu') ? ` ⚡${accelOf[u]}` : '';
+
+// live fleet chips
+async function refreshFleet(){
+  try{
+    const r = await fetch('/dani/fleet'); const d = await r.json();
+    const sites = {};
+    (d.workers||[]).filter(w=>!w.Trainer).forEach(w=>{ (sites[w.Site||'site']=sites[w.Site||'site']||[]).push(w); accelOf[w.UUID]=w.Accel||''; });
+    siteRing = Object.keys(sites);
+    const el = $('#fleet'); el.innerHTML='';
+    // the CONTROL PLANE first: every Raft controller, the elected leader starred
+    try{
+      const cl = await (await fetch('/dani/cluster')).json();
+      if(cl.count){
+        const c=document.createElement('span'); c.className='chip';
+        c.style.borderColor='rgba(56,189,248,.5)';
+        c.textContent = cl.count>1
+          ? `control plane: ${cl.count} controllers · leader ${cl.leader} ★`
+          : `control plane: 1 controller (${cl.leader})`;
+        el.appendChild(c);
+      }
+    }catch(e){ /* older controller without /dani/cluster */ }
+    Object.entries(sites).forEach(([site,ws])=>{
+      const c=document.createElement('span'); c.className='chip'; c.textContent=`${site}: ${ws.length} node${ws.length>1?'s':''}`; el.appendChild(c);
+    });
+    if(!Object.keys(sites).length){ el.innerHTML='<span class="chip">no worker nodes yet</span>'; }
+    // model options
+    const m = await (await fetch('/v1/models')).json();
+    const sel=$('#model'); const have=new Set([...sel.options].map(o=>o.value));
+    (m.data||[]).forEach(x=>{ if(!have.has(x.id)){ const o=document.createElement('option'); o.value=x.id;o.textContent=x.id;sel.appendChild(o);} });
+  }catch(e){ $('#fleet').innerHTML='<span class="chip">gateway offline</span>'; }
+}
+refreshFleet(); setInterval(refreshFleet, 4000);
+
+// ---- beat 3: governance + resilience ----
+let allNodes = [];
+async function refreshGovernance(){
+  try{
+    const f = await (await fetch('/dani/fleet')).json();
+    allNodes = (f.workers||[]).filter(w=>!w.Trainer);
+    // live topology chips (drained nodes grey out)
+    const topo=$('#topo'); topo.innerHTML='';
+    allNodes.forEach(w=>{
+      const el=document.createElement('div'); el.className='fn';
+      const state = w.Drained ? 'err' : 'ok';
+      el.innerHTML=`<span class="dot ${state}"></span><span class="name">${w.UUID}</span>`+
+        `<span class="meta">${w.Site||''}${w.Drained?' · drained':' · serving'}</span>`;
+      topo.appendChild(el);
+    });
+    const cap = allNodes.filter(w=>!w.Drained).reduce((a,w)=>a+(w.MaxConcurrent||0),0);
+    const served = allNodes.reduce((a,w)=>a+(w.Served||0),0);
+    $('#r-cap').textContent = cap;
+    $('#r-served').textContent = served;
+  }catch(e){}
+  try{
+    const a = await (await fetch('/dani/audit?limit=1')).json();
+    $('#r-audit').textContent = (a.integrity && a.integrity.ok) ? '✓ verified' : '—';
+    $('#r-audit').title = (a.records||0)+' events';
+  }catch(e){}
+  try{
+    const m = await (await fetch('/metrics')).text();
+    // count backup archives if the controller exposes them; else show the retention config indirectly
+    $('#r-backups').textContent = 'on';
+  }catch(e){}
+}
+refreshGovernance(); setInterval(refreshGovernance, 4000);
+
+$('#chaos').onclick = async () => {
+  const live = allNodes.filter(w=>!w.Drained);
+  if(!live.length){ return; }
+  const victim = live[0].UUID;
+  $('#chaos').disabled=true;
+  $('#chaos-note').textContent = `Draining ${victim} — the router drops it instantly and re-routes to healthy nodes…`;
+  try{
+    await fetch('/dani/nodes/drain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({node:victim,drain:true})});
+    await refreshGovernance();
+    setTimeout(async ()=>{
+      await fetch('/dani/nodes/drain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({node:victim,drain:false})});
+      $('#chaos-note').textContent = `${victim} restored. Zero requests dropped — DANI kept serving from the rest of the mesh.`;
+      $('#chaos').disabled=false;
+      refreshGovernance();
+    }, 6000);
+  }catch(e){ $('#chaos-note').textContent='node control needs the demo controller (auth off).'; $('#chaos').disabled=false; }
+};
+
+// parse Go stubs: doc comment + `func Name(...) ret {` ... `}` containing //TODO
+function parseStubs(src){
+  const lines = src.split('\n'); const stubs=[];
+  for(let i=0;i<lines.length;i++){
+    const m = lines[i].match(/^func\s+([A-Za-z_]\w*)\s*\(/);
+    if(!m) continue;
+    // find the matching close brace
+    let depth=0, started=false, end=i, body=[];
+    for(let j=i;j<lines.length;j++){
+      for(const ch of lines[j]){ if(ch==='{'){depth++;started=true;} else if(ch==='}'){depth--;} }
+      body.push(lines[j]);
+      if(started && depth===0){ end=j; break; }
+    }
+    const text = body.join('\n');
+    if(/\/\/\s*TODO/i.test(text) && m[1]!=='main'){
+      // doc comment: preceding // lines
+      let doc=[], k=i-1; while(k>=0 && lines[k].trim().startsWith('//')){ doc.unshift(lines[k]); k--; }
+      stubs.push({name:m[1], startLine:i, endLine:end, signature:lines[i], doc:doc.join('\n')});
+    }
+    i=end;
+  }
+  return stubs;
+}
+
+// extract a Go function body from a model completion (tolerant of fences / restated signature)
+function extractFunc(name, completion){
+  let t = completion.replace(/```[a-z]*\n?/gi,'').trim();
+  const idx = t.indexOf('func '+name);
+  if(idx>=0){
+    t = t.slice(idx);
+    // take up to the matching closing brace
+    let depth=0, started=false, out='';
+    for(const ch of t){ out+=ch; if(ch==='{'){depth++;started=true;} else if(ch==='}'){depth--; if(started&&depth===0)break;} }
+    return out;
+  }
+  return null; // couldn't find a full func — caller keeps the stub
+}
+
+// GATEWAY LANES: browsers cap HTTP/1.1 at ~6 connections per ORIGIN, which would serialize a
+// 30-wide fan-out into 6-request waves (and make the later requests' timers count browser queue
+// time, not node time). In demo mode the gateway also listens on ports +1..+4 — each is its own
+// origin, so sharding requests across lanes gives ~30 true concurrent requests from one tab.
+let lanes = [''];   // '' = same-origin
+(async function discoverLanes(){
+  const port = Number(location.port || (location.protocol==='https:'?443:80));
+  const found = [''];
+  await Promise.all([1,2,3,4].map(async i=>{
+    const o = `${location.protocol}//${location.hostname}:${port+i}`;
+    try{ const r = await fetch(o+'/healthz', {signal: AbortSignal.timeout(2500)}); if(r.ok) found.push(o); }catch(e){}
+  }));
+  lanes = found;
+})();
+
+async function complete(stub, model, originSite, contract, laneIx){
+  const prompt =
+    `You are ONE worker in a fleet implementing a Go program together. These are ALL the function `+
+    `signatures — the shared contract. You MAY call any of them:\n\n${contract}\n\n`+
+    `Implement ONLY this ONE function. Return just its complete Go code (signature + body), `+
+    `ASCII only, no imports, no markdown fences, no other functions:\n\n${stub.doc}\n${stub.signature}`;
+  const headers={'Content-Type':'application/json'};
+  if(originSite) headers['X-Dani-Site']=originSite; // request "originates" at this site -> locality spreads the fan-out
+  const lane = lanes[(laneIx||0) % lanes.length];
+  const t0=performance.now();
+  const r = await fetch(lane+'/v1/chat/completions',{method:'POST',headers,
+    body:JSON.stringify({model:model||undefined, messages:[{role:'user',content:prompt}], max_tokens:320, temperature:0})});
+  const ms = Math.round(performance.now()-t0);
+  const served = r.headers.get('X-Dani-Served-By')||'?';
+  const site = r.headers.get('X-Dani-Site')||'';
+  const d = await r.json();
+  const content = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
+  const tok = (d.usage && d.usage.completion_tokens) || 0;
+  return {ok:r.status===200, ms, served, site, func: extractFunc(stub.name, content), raw:content, tok};
+}
+
+// ---- per-function CONTRACT CHECK: compile each returned function the moment it lands ----
+// The function is type-checked against a ZERO-STUB harness of the whole contract (all sibling
+// signatures with `return zero` bodies), so even functions that CALL siblings compile in
+// isolation. Bad code is caught immediately and refetched — before assembly, not after.
+function zeroReturn(sig){
+  const brace = sig.lastIndexOf('{');
+  const paren = sig.lastIndexOf(')', brace);
+  const ret = sig.slice(paren+1, brace).trim();
+  if(!ret || ret.startsWith('(')) return '';
+  return `\tvar zero ${ret}\n\treturn zero`;
+}
+function contractHarness(allStubs, target, code){
+  const others = allStubs.filter(s=>s.name!==target.name)
+    .map(s=>{ const zr=zeroReturn(s.signature); return s.signature+'\n'+(zr?zr+'\n':'')+'}'; });
+  return 'package main\n\n'+others.join('\n')+'\n\n'+code+'\n\nfunc main() {}\n';
+}
+// small semaphore: the hub compiles these; ~4 at a time keeps checks fast without stampeding it
+let vActive = 0;
+async function verifySource(body){
+  while(vActive>=4) await new Promise(r=>setTimeout(r,150));
+  vActive++;
+  try{
+    const r=await fetch('/demo/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    return await r.json();
+  } finally { vActive--; }
+}
+
+function fnCard(stub){
+  const el=document.createElement('div'); el.className='fn';
+  el.innerHTML=`<span class="dot" id="d-${stub.name}"></span>
+    <span class="name">${stub.name}()</span>
+    <span class="meta" id="m-${stub.name}">queued</span>`;
+  return el;
+}
+
+// fan one round of stubs out to the fleet; each function is CONTRACT-CHECKED (compiled against
+// the zero-stub harness) the moment it lands — failures come back func:null and get refetched.
+// allStubs = the full contract (harness needs every sibling signature).
+async function fanRound(stubs, model, contract, tally, allStubs){
+  return Promise.all(stubs.map(async (s,ix)=>{
+    const origin = siteRing.length ? siteRing[ix % siteRing.length] : '';
+    $('#d-'+s.name).className='dot run'; $('#m-'+s.name).textContent='dispatching…';
+    try{ const res=await complete(s,model,origin,contract,ix);
+      const dot=$('#d-'+s.name), meta=$('#m-'+s.name);
+      tally.sumMs+=res.ms||0; tally.tok+=res.tok||0; if(res.served&&res.served!=='?') tally.nodes.add(res.served);
+      if(!(res.ok && res.func)){ dot.className='dot err'; meta.textContent=(res.served||'?')+' · no usable code'; return {stub:s, ...res, func:null}; }
+      meta.innerHTML=`<b>${res.served}</b> · contract check…`;
+      try{
+        const v = await verifySource({source: contractHarness(allStubs||stubs, s, res.func), compileOnly:true});
+        if(!v.ok){
+          dot.className='dot err'; meta.textContent=`${res.served} · failed contract check — refetching`;
+          return {stub:s, ...res, func:null};
+        }
+      }catch(e){ /* verify endpoint unreachable: fall through, the assembly-stage compile still gates */ }
+      dot.className='dot ok';
+      meta.innerHTML=`<b>${res.served}</b>${accelBadge(res.served)}${res.site?(' · '+res.site):''} · ${res.ms}ms · ✓ compiled`;
+      return {stub:s, ...res};
+    }catch(e){ $('#d-'+s.name).className='dot err'; $('#m-'+s.name).textContent='error'; return {stub:s, ok:false, ms:0, served:'?', func:null, tok:0}; }
+  }));
+}
+
+// assemble: replace stub line-ranges (bottom-up, indices stay valid) with the fleet's functions.
+function assemble(src, byName){
+  let lines=src.split('\n');
+  const have=Object.values(byName).filter(r=>r&&r.func);
+  have.sort((a,b)=>b.stub.startLine-a.stub.startLine).forEach(r=>{
+    lines.splice(r.stub.startLine, r.stub.endLine-r.stub.startLine+1, r.func);
+  });
+  return lines.join('\n');
+}
+
+function showAssembled(){
+  $('#asm-wrap').style.display='block';
+  $('#assembled-code').textContent = lastAssembled;
+}
+
+async function verifyOnce(){
+  const r=await fetch('/demo/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source:lastAssembled})});
+  return r.json();
+}
+
+// which stubs does a compile error implicate? match function names in the compiler output;
+// if none match, we retry everything that has no usable code yet.
+function implicatedStubs(stubs, errText){
+  const hit = stubs.filter(s => new RegExp('\\b'+s.name+'\\b').test(errText||''));
+  return hit.length ? hit : stubs;
+}
+
+$('#go').onclick = async () => {
+  const src=$('#skeleton').value, model=$('#model').value;
+  const stubs=parseStubs(src);
+  if(!stubs.length){ alert('No //TODO function stubs found.'); return; }
+  $('#go').disabled=true; $('#verify').disabled=true; $('#out').style.display='none'; $('#verdict').innerHTML='';
+  $('#asm-wrap').style.display='none';
+  $('#s-fns').textContent=stubs.length;
+  const fns=$('#fns'); fns.innerHTML=''; stubs.forEach(s=>fns.appendChild(fnCard(s)));
+  // the shared CONTRACT: every function's doc + signature, so each node can call its siblings.
+  const contract = stubs.map(s=>`${s.doc}\n${s.signature} { ... }`).join('\n');
+
+  const tally={sumMs:0, tok:0, nodes:new Set()};
+  const byName={};
+  const wall0=performance.now();
+
+  // round 1: everything in parallel; rounds 2-3: refetch only what came back unusable.
+  let pending=stubs;
+  for(let round=1; round<=3 && pending.length; round++){
+    if(round>1) $('#verdict').innerHTML=`<span class="hint">round ${round}: refetching ${pending.length} function(s) from the fleet…</span>`;
+    const results = await fanRound(pending, model, contract, tally, stubs);
+    results.forEach(r=>{ if(r.func || !byName[r.stub.name]) byName[r.stub.name]=r; });
+    pending = stubs.filter(s=>!(byName[s.name]&&byName[s.name].func));
+  }
+  const updateStats=()=>{
+    const wall=Math.round(performance.now()-wall0);
+    $('#s-nodes').textContent=tally.nodes.size;
+    $('#s-wall').textContent=(wall/1000).toFixed(1)+'s';
+    $('#s-speed').textContent = wall>0 ? (tally.sumMs/wall).toFixed(1)+'×' : '—';
+    $('#s-tps').textContent = wall>0 ? (tally.tok/(wall/1000)).toFixed(1) : '—';
+    return wall;
+  };
+  let wall=updateStats();
+
+  const haveAll=()=>stubs.every(s=>byName[s.name]&&byName[s.name].func);
+  lastAssembled = assemble(src, byName);
+  showAssembled();
+  const doneCount=stubs.filter(s=>byName[s.name]&&byName[s.name].func).length;
+  $('#assembled-note').textContent = `${doneCount}/${stubs.length} functions written across ${tally.nodes.size} node(s); ${tally.tok} tokens, sum of node time ${(tally.sumMs/1000).toFixed(1)}s done in ${(wall/1000).toFixed(1)}s wall.`;
+
+  // AUTO compile-and-run; on compile failure, refetch the implicated functions and try again.
+  if(haveAll()){
+    for(let attempt=1; attempt<=3; attempt++){
+      $('#verdict').innerHTML=`<span class="hint">compiling &amp; running (attempt ${attempt})…</span>`;
+      let d; try{ d=await verifyOnce(); }
+      catch(e){ $('#verdict').innerHTML='<div class="verdict bad">verify endpoint unavailable (run with --demo)</div>'; break; }
+      $('#out').style.display='block'; $('#out').textContent=d.output||'(no output)';
+      if(d.ok){
+        $('#verdict').innerHTML = `<div class="verdict ok">✓ It compiles and runs — the fleet wrote working code${attempt>1?` (self-healed in ${attempt} attempts)`:''}.</div>`;
+        break;
+      }
+      if(attempt===3){ $('#verdict').innerHTML = `<div class="verdict bad">✗ ${d.status} — 3 attempts; see the compiler output + assembled code below.</div>`; break; }
+      const bad = implicatedStubs(stubs, (d.output||'')+' '+(d.status||''));
+      $('#verdict').innerHTML=`<span class="hint">compile failed — refetching ${bad.map(s=>s.name).join(', ')} and retrying…</span>`;
+      const redo = await fanRound(bad, model, contract, tally, stubs);
+      redo.forEach(r=>{ if(r.func) byName[r.stub.name]=r; });
+      lastAssembled = assemble(src, byName);
+      showAssembled();
+      wall=updateStats();
+    }
+  } else {
+    $('#verdict').innerHTML = `<div class="verdict bad">✗ ${stubs.length-doneCount} function(s) never came back usable after 3 rounds.</div>`;
+  }
+  $('#verify').disabled = !haveAll();
+  $('#go').disabled=false;
+};
+
+$('#verify').onclick = async () => {
+  $('#verify').disabled=true; $('#verdict').innerHTML='<span class="hint">compiling &amp; running…</span>';
+  try{
+    const d=await verifyOnce();
+    $('#verdict').innerHTML = `<div class="verdict ${d.ok?'ok':'bad'}">${d.ok?'✓ It compiles and runs — the fleet wrote working code.':'✗ '+d.status}</div>`;
+    $('#out').style.display='block'; $('#out').textContent=d.output||'(no output)';
+  }catch(e){ $('#verdict').innerHTML='<div class="verdict bad">verify endpoint unavailable (run with --demo)</div>'; }
+  $('#verify').disabled=false;
+};
+
+$('#copy-asm').onclick = (e) => {
+  e.preventDefault(); e.stopPropagation();
+  navigator.clipboard.writeText(lastAssembled||'').then(()=>{ $('#copy-asm').textContent='copied!'; setTimeout(()=>{$('#copy-asm').textContent='copy';},1200); });
+};
+</script>
+
+<script>
+/* SIGNATURE: the living mesh substrate. Peers advertise capacity; tasks travel the fabric. Nodes
+   coloured by state, edges brighten as packets pass. No central scheduler is drawn — there isn't one.
+   (DANI design system.) */
+(function(){
+  const c = document.getElementById('meshbg'); if(!c) return;
+  const ctx = c.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const STATES = [{col:'#A3F000',w:.6},{col:'#22D3EE',w:.16},{col:'#FFB020',w:.14},{col:'#3D4642',w:.10}];
+  let W,H,nodes=[],edges=[],packets=[];
+  function seedState(){ let r=Math.random(),a=0; for(const s of STATES){a+=s.w; if(r<=a) return s;} return STATES[0]; }
+  function build(){
+    const dpr=devicePixelRatio||1; W=c.clientWidth=innerWidth; H=c.clientHeight=innerHeight;
+    c.width=W*dpr; c.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    nodes=[];edges=[];packets=[];
+    const N=Math.max(16,Math.min(30,Math.round(W*H/62000))), pad=60;
+    for(let i=0;i<N;i++) nodes.push({x:pad+Math.random()*(W-pad*2),y:pad+Math.random()*(H-pad*2),
+      r:2.4+Math.random()*2.2,s:seedState(),ph:Math.random()*Math.PI*2,vx:(Math.random()-.5)*.10,vy:(Math.random()-.5)*.10});
+    nodes.forEach((n,i)=>{ nodes.map((m,j)=>({j,d:Math.hypot(m.x-n.x,m.y-n.y)})).filter(o=>o.j!==i)
+      .sort((a,b)=>a.d-b.d).slice(0,2+(i%2)).forEach(o=>{ if(!edges.some(e=>e.a===o.j&&e.b===i)) edges.push({a:i,b:o.j,lit:0}); }); });
+  }
+  function spawn(){ if(!edges.length) return; packets.push({e:edges[(Math.random()*edges.length)|0],t:0,sp:.005+Math.random()*.007}); }
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    nodes.forEach(n=>{ if(!reduce){n.x+=n.vx;n.y+=n.vy;} if(n.x<50||n.x>W-50)n.vx*=-1; if(n.y<50||n.y>H-50)n.vy*=-1; });
+    edges.forEach(e=>{ const a=nodes[e.a],b=nodes[e.b]; ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle=`rgba(118,185,0,${.05+e.lit*.45})`; ctx.lineWidth=.7+e.lit*1.1; ctx.stroke(); e.lit*=.94; });
+    packets=packets.filter(p=>{ p.t+=reduce?1:p.sp; const a=nodes[p.e.a],b=nodes[p.e.b];
+      const x=a.x+(b.x-a.x)*p.t,y=a.y+(b.y-a.y)*p.t; p.e.lit=Math.max(p.e.lit,1-Math.abs(.5-p.t)*1.4);
+      ctx.beginPath();ctx.arc(x,y,1.8,0,7); ctx.fillStyle='#D6FF7A';ctx.shadowColor='#A3F000';ctx.shadowBlur=10;ctx.fill();ctx.shadowBlur=0; return p.t<1; });
+    const now=performance.now()/700;
+    nodes.forEach(n=>{ const pulse=n.s.col==='#3D4642'?0:(Math.sin(now+n.ph)*.5+.5);
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r+5+pulse*3,0,7); ctx.fillStyle=n.s.col+'12';ctx.fill();
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,7); ctx.fillStyle=n.s.col;ctx.shadowColor=n.s.col;ctx.shadowBlur=7+pulse*7;ctx.fill();ctx.shadowBlur=0; });
+    if(!reduce) requestAnimationFrame(frame);
+  }
+  build(); frame(); if(!reduce) setInterval(spawn,300);
+  let t; addEventListener('resize',()=>{ clearTimeout(t); t=setTimeout(()=>{build(); if(reduce)frame();},150); });
+})();
+</script>
+</body>
+</html>

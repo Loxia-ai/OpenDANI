@@ -1,0 +1,32 @@
+# Build output
+agent/dist/
+console/dist/
+node_modules/
+*.exe
+*.test
+*.out
+*.tsbuildinfo
+test-results/
+playwright-report/
+
+# Local runtime state and secrets
+*.db
+*.db-wal
+*.db-shm
+*.pem
+*.key
+*.conf
+.env
+.env.*
+!.env.example
+
+# Models and generated local artifacts
+*.gguf
+*.safetensors
+*.bin
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

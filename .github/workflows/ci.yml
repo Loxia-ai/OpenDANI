@@ -1,0 +1,74 @@
+name: OpenDANI source checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'agent/**'
+      - 'console/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths:
+      - 'agent/**'
+      - 'console/**'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: open-dani-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  agent:
+    name: OpenDANI Go (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.sum
+      - name: Verify downloaded modules
+        run: go mod verify
+      - name: Vet
+        run: go vet ./...
+      - name: Build all packages
+        run: go build ./...
+      - name: Test (Linux race detector)
+        if: runner.os == 'Linux'
+        run: go test -race -count=1 -timeout 900s ./...
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
+        run: go test -count=1 -timeout 900s ./...
+
+  console:
+    name: OpenDANI console source
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: console
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build

@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+// DANI Enrollment Service — wire contract.
+//
+// Governing decisions:
+//   DL-R11-05    : gRPC over mTLS, .proto authoritative, dani.<domain>.v1 versioning.
+//   DL-R11.2-01  : bootstrap token = signed single-use first-factor; node self-mints UUID + keypair.
+//   DL-R11.2-02  : attestation tiers 0..3, proven not claimed; Tier-2 floor for auto-approval.
+//   DL-R11.2-03  : pending-join queue, three drain modes; declared vs assigned; class ceiling.
+//   DL-R11.2-04  : six-step handshake; clock-sync first; EnrollPending patient pollable state;
+//                  re-validate at admission; token burned on success not attempt.
+//   DL-R11.2-05  : renewal (lightweight, over mTLS) vs full re-enrollment (broken trust).
+//   DF-R11.2-01  : message sequence.
+//
+// NOTE: The enrollment handshake (Begin/Challenge/Proof/Complete) runs over a
+// controller-authenticated TLS channel — the node has no cert yet (DL-R11.2-04).
+// Renewal runs over the normal MUTUAL-mTLS Link channel (node already has a cert).
+
+package dani.enrollment.v1;
+
+option go_package = "dani.local/agent/internal/gen/enrollmentv1;enrollmentv1";
+
+// ===========================================================================
+// Service
+// ===========================================================================
+service EnrollmentService {
+  // --- First-contact handshake (DF-R11.2-01), controller-auth TLS only -------
+  // Step 1->2: present token + declared attributes + node clock; get challenge.
+  rpc EnrollBegin(EnrollBeginRequest) returns (EnrollChallenge);
+  // Step 3->4: return attestation proof + CSR; enter pending-join queue.
+  rpc EnrollProof(EnrollProofRequest) returns (EnrollPending);
+  // Step 5: poll the pending request; returns EnrollComplete once approved.
+  // Patient pollable state — node may disconnect/reconnect on request_id and
+  // wait hours for a human without holding a connection hostage (DL-R11.2-04).
+  rpc EnrollPoll(EnrollPollRequest) returns (EnrollPollResponse);
+
+  // --- Renewal (DL-R11.2-05), over mutual mTLS (node already has a cert) ------
+  // Lightweight automatic routine renewal at ~50% cert life. No token, no human.
+  rpc RenewCert(RenewRequest) returns (RenewResponse);
+}
+
+// ===========================================================================
+// Shared enums
+// ===========================================================================
+enum AttestationTier {
+  ATTESTATION_TIER_ADMINISTRATIVE = 0; // human vouched; no hardware backing
+  ATTESTATION_TIER_TPM_BOUND      = 1; // real TPM holds node key; possession proven
+  ATTESTATION_TIER_MEASURED_BOOT  = 2; // Tier1 + boot fingerprints match reference set
+  ATTESTATION_TIER_HROT           = 3; // Tier2 + periodic/continuous re-attestation
+}
+
+enum DrainMode {
+  DRAIN_MODE_UNSPECIFIED   = 0;
+  DRAIN_MODE_AUTO_POLICY   = 1; // Mode 1: opt-in, time-bounded, Tier-2 floored
+  DRAIN_MODE_BATCH_CONFIRM = 2; // Mode 2: DEFAULT — node-initiated, human batch-confirm
+  DRAIN_MODE_SCRUTINY      = 3; // Mode 3: individual SO scrutiny (high-security)
+}
+
+// ===========================================================================
+// Step 1 -> 2 : EnrollBegin -> EnrollChallenge
+// ===========================================================================
+message EnrollBeginRequest {
+  bytes  token                 = 1; // signed single-use first-factor (DL-R11.2-01)
+  string node_uuid             = 2; // node self-minted; becomes cert CN (stable for life)
+  repeated string declared_roles = 3; // REQUEST, not grant (DL-R11.2-03)
+  string declared_class        = 4; // REQUEST, not grant
+  AttestationTier attestation_capability = 5; // the tier the node believes it can reach
+  string node_time             = 6; // RFC3339 node clock — for skew check (clock-sync first)
+}
+
+message EnrollChallenge {
+  string server_time          = 1; // authoritative time (DL-R11.2-04 clock-sync FIRST)
+  bool   skew_warning         = 2; // true if node_time differs beyond threshold
+  bytes  ek_challenge         = 3; // TPM EK possession challenge (Tier1+); empty for Tier0
+  bytes  pcr_nonce            = 4; // freshness nonce for the measured-boot quote (Tier2+)
+  string request_id           = 5; // correlates the in-flight handshake
+}
+
+// ===========================================================================
+// Step 3 -> 4 : EnrollProof -> EnrollPending
+// ===========================================================================
+message EnrollProofRequest {
+  string request_id           = 1;
+  bytes  ek_challenge_response = 2; // proves TPM possession (Tier1+)
+  bytes  tpm_quote            = 3; // quote over PCRs vs signed reference set (Tier2+)
+  bytes  csr_der              = 4; // CSR carrying the node public key (private key never leaves)
+  bytes  capability_inventory = 5; // JSON/CBOR: engines, VRAM, accelerators
+}
+
+message EnrollPending {
+  string request_id           = 1; // node polls on this; survives reconnect
+  AttestationTier achieved_tier = 2; // tier the node ACTUALLY reached (proven, not claimed)
+  DrainMode mode              = 3; // which drain mode applied to this request
+  uint32 queue_position       = 4; // optional, advisory (0 = unknown/not provided)
+}
+
+// ===========================================================================
+// Step 5 : EnrollPoll -> EnrollComplete (or still-waiting / rejected)
+// ===========================================================================
+message EnrollPollRequest {
+  string request_id           = 1;
+}
+
+message EnrollPollResponse {
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    STATUS_WAITING     = 1; // still in queue (keep polling)
+    STATUS_APPROVED    = 2; // complete is populated
+    STATUS_REJECTED    = 3; // reject_reason is populated
+    STATUS_EXPIRED     = 4; // request auto-expired (RR-R11.2-06)
+  }
+  Status status              = 1;
+  EnrollComplete complete    = 2; // set iff STATUS_APPROVED
+  string reject_reason       = 3; // set iff STATUS_REJECTED
+}
+
+message EnrollComplete {
+  bytes  node_cert            = 1; // signed by issuing intermediate (DL-R11-13), with ASSIGNED attrs
+  bytes  ca_bundle            = 2; // chain to verify others
+  bytes  trust_anchor         = 3; // root cert fingerprint / anchor
+  string initial_config_version = 4; // first config to apply (DL-R11-10)
+}
+
+// ===========================================================================
+// Renewal (DL-R11.2-05) — over mutual mTLS; node proves possession via the
+// existing client cert at the TLS layer, so no token is required.
+// ===========================================================================
+message RenewRequest {
+  string node_uuid           = 1;
+  bytes  csr_der             = 2; // fresh CSR (same key by default; new key on rotation)
+  bool   reattest            = 3; // true when the periodic re-attestation interval is due
+  bytes  tpm_quote           = 4; // populated iff reattest (full attestation refresh)
+}
+
+message RenewResponse {
+  bytes  node_cert           = 1; // refreshed identity, same attributes, new validity window
+  string not_after           = 2; // RFC3339 new expiry (controller tracks for renewal-status view)
+}
