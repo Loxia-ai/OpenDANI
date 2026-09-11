@@ -8,7 +8,7 @@ class ResizeObserverStub {
   unobserve() {}
   disconnect() {}
 }
-const g = global as unknown as Record<string, unknown>;
+const g = globalThis as unknown as Record<string, unknown>;
 g.ResizeObserver = g.ResizeObserver ?? ResizeObserverStub;
 if (typeof g.DOMMatrixReadOnly === "undefined") {
   g.DOMMatrixReadOnly = class {
